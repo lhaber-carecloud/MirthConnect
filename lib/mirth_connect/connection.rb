@@ -28,27 +28,44 @@ class MirthConnect::Connection
     mirth_request( 'channelstatus', 'getChannelStatusList' )['list']['channelStatus']
   end
 
+  def channel_id_list
+    channel_status_list.map{|c| c['channelId']}
+  end
+
   def get_message_by_id( message_id )
     create_message_filter( :filter => {:id => message_id} )
     mirth_request('messages', 'getMessagesByPage')['list']['messageObject']
   end
 
-  def get_messages_between( start_date, end_date )
-    count_messages_between( start_date, end_date )
+  def get_messages_between( start_date, end_date, filter = {} )
+    count_messages_between( start_date, end_date, filter)
     mirth_request('messages', 'getMessagesByPage')['list']['messageObject']
   end
 
-  def count_messages_between( start_date, end_date )
+  def get_messages_by_channel ( channel_id, filter = {} )
+    count_messages_by_channel( channel_id, filter )
+    mirth_request('messages', 'getMessagesByPage')['list']['messageObject']
+  end
+
+  def count_messages_by_channel ( channel_id, filter = {} )
+    channel_filter = {:channelId => channel_id}
+    filter = channel_filter.merge( validate_message_filter(filter) )
+
+    create_message_filter( :filter => filter)
+  end
+
+  def count_messages_between( start_date, end_date, filter = {} )
 
     def unix_13_digit_time ( time )
       (time.to_f * 1000).to_i
     end
 
-    filter = {:startDate => {:time => unix_13_digit_time(start_date), :timezone =>'America/New York'},
-              :endDate   => {:time => unix_13_digit_time(end_date),   :timezone =>'America/New York'} }
+    time_filter = {:startDate => {:time => unix_13_digit_time(start_date), :timezone =>'America/New York'},
+                   :endDate   => {:time => unix_13_digit_time(end_date),   :timezone =>'America/New York'} }
+
+    filter = time_filter.merge( validate_message_filter(filter) )
 
     create_message_filter( :filter => filter )
-
   end
 
   def create_message_filter( opts = {} )
