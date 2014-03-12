@@ -5,13 +5,22 @@ class MirthConnect::Connection
 
   def initialize( server, port, username, password, version)
     @url = "https://#{server}:#{port}/"
-    @cookie = login(password, username, version).cookies
-  end
-
-  def login(password, username, version)
     @password = password
     @username = username
     @version  = version
+    @cookie = login(password, username, version).cookies
+  end
+
+  def active?
+    begin
+      channel_status_list
+    rescue
+      false
+    end
+    true
+  end
+
+  def login(password, username, version)
     mirth_request( 'users', 'login', {:username => username, :password => password, :version => version} )
   end
 
@@ -24,10 +33,29 @@ class MirthConnect::Connection
     mirth_request('messages', 'getMessagesByPage')['list']['messageObject']
   end
 
+  def get_messages_between( start_date, end_date )
+    count_messages_between( start_date, end_date )
+    mirth_request('messages', 'getMessagesByPage')['list']['messageObject']
+  end
+
+  def count_messages_between( start_date, end_date )
+
+    def unix_13_digit_time ( time )
+      (time.to_f * 1000).to_i
+    end
+
+    filter = {:startDate => {:time => unix_13_digit_time(start_date), :timezone =>'America/New York'},
+              :endDate   => {:time => unix_13_digit_time(end_date),   :timezone =>'America/New York'} }
+
+    create_message_filter( :filter => filter )
+
+  end
+
   def create_message_filter( opts = {} )
     @current_filter =  opts
     mirth_request('messages', 'removeFilterTables')
-    mirth_request('messages', 'createMessagesTempTable', @current_filter )
+    num_messages = Integer mirth_request('messages', 'createMessagesTempTable', @current_filter )
+    num_messages
   end
 
   def to_mirth_xml ( hash )
