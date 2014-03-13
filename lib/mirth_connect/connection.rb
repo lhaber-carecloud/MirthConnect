@@ -1,7 +1,12 @@
+require 'mirth_connect'
+require 'mirth_connect/helpers'
+
 class MirthConnect::Connection
 
   attr_accessor :url, :cookie, :password, :username, :version
   attr_accessor :current_filter
+
+  Helpers = MirthConnect::Helpers
 
   def initialize( server, port, username, password, version)
     @url = "https://#{server}:#{port}/"
@@ -21,11 +26,11 @@ class MirthConnect::Connection
   end
 
   def login(password, username, version)
-    mirth_request( 'users', 'login', {:username => username, :password => password, :version => version} )
+    mirth_request( 'users', 'login', false, {:username => username, :password => password, :version => version} )
   end
 
   def channel_status_list
-    mirth_request( 'channelstatus', 'getChannelStatusList' )['list']['channelStatus']
+    mirth_request( 'channelstatus', 'getChannelStatusList', true )['list']['channelStatus']
   end
 
   def channel_id_list
@@ -34,44 +39,39 @@ class MirthConnect::Connection
 
   def get_message_by_id( message_id )
     create_message_filter( :filter => {:id => message_id} )
-    mirth_request('messages', 'getMessagesByPage')['list']['messageObject']
+    mirth_request('messages', 'getMessagesByPage', true)['list']['messageObject']
   end
 
   def get_messages_between( start_date, end_date, filter = {} )
     count_messages_between( start_date, end_date, filter)
-    mirth_request('messages', 'getMessagesByPage')['list']['messageObject']
+    mirth_request('messages', 'getMessagesByPage', true)['list']['messageObject']
   end
 
-  def get_messages_by_channel ( channel_id, filter = {} )
+  def get_messages_by_channel( channel_id, filter = {} )
     count_messages_by_channel( channel_id, filter )
-    mirth_request('messages', 'getMessagesByPage')['list']['messageObject']
+    mirth_request('messages', 'getMessagesByPage', true)['list']['messageObject']
   end
 
-  def count_messages_by_channel ( channel_id, filter = {} )
+  def count_messages_by_channel( channel_id, filter = {} )
     channel_filter = {:channelId => channel_id}
-    filter = channel_filter.merge( validate_message_filter(filter) )
+    channel_filter = Helpers.validate_message_filter(filter).merge( channel_filter )
 
-    create_message_filter( :filter => filter)
+    create_message_filter( :filter => channel_filter)
   end
 
   def count_messages_between( start_date, end_date, filter = {} )
+    time_filter = {:startDate => {:time => Helpers.unix_13_digit_time(start_date), :timezone =>'America/New York'},
+                   :endDate   => {:time => Helpers.unix_13_digit_time(end_date),   :timezone =>'America/New York'} }
 
-    def unix_13_digit_time ( time )
-      (time.to_f * 1000).to_i
-    end
-
-    time_filter = {:startDate => {:time => unix_13_digit_time(start_date), :timezone =>'America/New York'},
-                   :endDate   => {:time => unix_13_digit_time(end_date),   :timezone =>'America/New York'} }
-
-    filter = time_filter.merge( validate_message_filter(filter) )
+    filter = Helpers.validate_message_filter(filter).merge( time_filter )
 
     create_message_filter( :filter => filter )
   end
 
   def create_message_filter( opts = {} )
     @current_filter =  opts
-    mirth_request('messages', 'removeFilterTables')
-    num_messages = Integer mirth_request('messages', 'createMessagesTempTable', @current_filter )
+    mirth_request('messages', 'removeFilterTables', false)
+    num_messages = Integer mirth_request('messages', 'createMessagesTempTable', false, @current_filter )
     num_messages
   end
 
@@ -101,7 +101,7 @@ class MirthConnect::Connection
     xml
   end
 
-  def mirth_request (endpoint, method, opts = {})
+  def mirth_request (endpoint, method, should_parse_output, opts = {})
 
     url = @url + "#{endpoint}?op=#{method}"
 
@@ -162,11 +162,8 @@ class MirthConnect::Connection
 
     end
 
-    if method == 'login'
-      response
-    else
-      Nori.new().parse(response)
-    end
+    should_parse_output ? Nori.new.parse(response) : response
 
   end
 end
+
