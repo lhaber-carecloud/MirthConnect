@@ -13,7 +13,11 @@ class MirthConnect::Connection
     @password = password
     @username = username
     @version  = version
-    @cookie = login(password, username, version).cookies
+    begin
+      @cookie = login(password, username, version).cookies
+    rescue => e
+      throw Exception, e
+    end
   end
 
   def active?
@@ -33,8 +37,10 @@ class MirthConnect::Connection
     mirth_request( 'channelstatus', 'getChannelStatusList', true )['list']['channelStatus']
   end
 
-  def channel_id_list
-    channel_status_list.map{|c| c['channelId']}
+  def channel_id_list( include_names )
+    id_list = Hash.new
+    channel_status_list.each{|c| id_list[ c['channelId'] ] = c['name'] }
+    id_list
   end
 
   def get_message_by_id( message_id )
