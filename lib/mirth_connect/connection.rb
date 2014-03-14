@@ -37,7 +37,7 @@ class MirthConnect::Connection
     mirth_request( 'channelstatus', 'getChannelStatusList', true )['list']['channelStatus']
   end
 
-  def channel_id_list( include_names )
+  def channel_id_name_hash
     id_list = Hash.new
     channel_status_list.each{|c| id_list[ c['channelId'] ] = c['name'] }
     id_list
