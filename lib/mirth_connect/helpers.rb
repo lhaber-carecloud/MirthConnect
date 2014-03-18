@@ -29,11 +29,11 @@ class MirthConnect::Helpers
     end
 
     def status_params
-      %w[ UNKNOWN, RECEIVED, ACCEPTED, FILTERED, TRANSFORMED, ERROR, SENT, QUEUED ]
+      %w[ UNKNOWN RECEIVED ACCEPTED FILTERED TRANSFORMED ERROR SENT QUEUED ]
     end
 
     def protocol_params
-      %w[ HL7V2, X12, XML, HL7V3, EDI, NCPDP, DICOM, DELIMITED ]
+      %w[ HL7V2 X12 XML HL7V3 EDI NCPDP DICOM DELIMITED ]
     end
 
     def channel_status_params
