@@ -6,7 +6,7 @@ class MirthConnect::Connection
   attr_accessor :url, :cookie, :password, :username, :version
   attr_accessor :current_filter
 
-  Helpers = MirthConnect::Helpers
+  HELPERS = MirthConnect::Helpers
 
   def initialize( server, port, username, password, version)
     @url = "https://#{server}:#{port}/"
@@ -20,7 +20,7 @@ class MirthConnect::Connection
     end
   end
 
-  def same_connection?( other_conn )
+  def eql?( other_conn )
 
     ( @url == other_conn.url &&
       @username == other_conn.username &&
@@ -140,8 +140,7 @@ class MirthConnect::Connection
   def create_message_filter( filter = {} )
     @current_filter = Helpers.validate_message_filter( filter )
     mirth_request('messages', 'removeFilterTables')
-    num_messages = Integer mirth_request('messages', 'createMessagesTempTable', @current_filter )
-    num_messages
+    Integer mirth_request('messages', 'createMessagesTempTable', @current_filter )
   end
 
   def parse_message( message )
@@ -171,6 +170,7 @@ class MirthConnect::Connection
                                 entries << {:string => strings}
                               end
                             rescue
+                              # ignored
                             end
                             {:entry => entries}
                           else
