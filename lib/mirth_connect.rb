@@ -15,11 +15,15 @@ module MirthConnect
   end
 
   def self::active?
-    !@connection.nil?
+    begin
+      @connection.active?
+    rescue
+      false
+    end
   end
 
   def self::connection
-    @connection || nil
+    @connection
   end
 
 end

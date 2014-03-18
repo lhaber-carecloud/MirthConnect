@@ -48,16 +48,16 @@ class MirthConnect::Connection
   end
 
   def login(password, username, version)
-    mirth_request( 'users', 'login', false, {:username => username, :password => password, :version => version} )
+    mirth_request( 'users', 'login', {:username => username, :password => password, :version => version} )
   end
 
   def channel_status_list
-    mirth_request( 'channelstatus', 'getChannelStatusList', true )['list']['channelStatus']
+   parse_channel_status_list( mirth_request( 'channelstatus', 'getChannelStatusList' ) )
   end
 
   def channel_id_name_hash
     id_list = Hash.new
-    channel_status_list.each{|c| id_list[ c['channelId'] ] = c['name'] }
+    channel_status_list.each{|c| id_list[ c[:channelId] ] = c[:name] }
     id_list
   end
 
@@ -76,17 +76,27 @@ class MirthConnect::Connection
     get_messages
   end
 
+  def get_messages_today( channel_id, filter = {} )
+    count_messages_today( channel_id, filter )
+    get_messages
+  end
+
+  def count_messages_today( channel_id, filter = {} )
+    filter[:channelId] = channel_id
+    count_messages_between( Date.today.to_time, Time.now, filter)
+  end
+
   def count_messages_by_channel( channel_id, filter = {} )
     channel_filter = {:channelId => channel_id}
-    channel_filter = Helpers.validate_message_filter(filter).merge( channel_filter )
-    create_message_filter( :filter => channel_filter)
+    channel_filter = filter.merge( channel_filter )
+    create_message_filter( :filter => channel_filter )
   end
 
   def count_messages_between( start_date, end_date, filter = {} )
     time_filter = {:startDate => {:time => Helpers.unix_13_digit_time(start_date), :timezone =>'America/New York'},
                    :endDate   => {:time => Helpers.unix_13_digit_time(end_date),   :timezone =>'America/New York'} }
-    filter = Helpers.validate_message_filter(filter).merge( time_filter )
-    create_message_filter( :filter => filter )
+    time_filter = filter.merge( time_filter )
+    create_message_filter( :filter => time_filter )
   end
 
 
@@ -95,8 +105,7 @@ class MirthConnect::Connection
 
   def get_message( should_parse = true )
     begin
-      message = mirth_request('messages', 'getMessagesByPage', true, {:maxMessages => 1})
-        puts message
+      message = mirth_request('messages', 'getMessagesByPage', {:maxMessages => 1})
     rescue
       return nil
     end
@@ -114,7 +123,7 @@ class MirthConnect::Connection
 
   def get_messages( should_parse = true )
     begin
-      message_list = mirth_request('messages', 'getMessagesByPage', true)
+      message_list = mirth_request('messages', 'getMessagesByPage')
     rescue
       return []
     end
@@ -128,10 +137,10 @@ class MirthConnect::Connection
     end
   end
 
-  def create_message_filter( opts = {} )
-    @current_filter =  opts
-    mirth_request('messages', 'removeFilterTables', false)
-    num_messages = Integer mirth_request('messages', 'createMessagesTempTable', false, @current_filter )
+  def create_message_filter( filter = {} )
+    @current_filter = Helpers.validate_message_filter( filter )
+    mirth_request('messages', 'removeFilterTables')
+    num_messages = Integer mirth_request('messages', 'createMessagesTempTable', @current_filter )
     num_messages
   end
 
@@ -178,18 +187,56 @@ class MirthConnect::Connection
 
   end
 
+  def parse_channel_status ( channel )
+
+    parsed_channel = Hash.new
+
+    channel_status_params = Helpers.channel_status_params
+    channel_status_params.each do |n|
+      parsed_channel[n] = if n == :deployedDate
+                            o = Hash.new
+                            begin
+                              o[:time] = channel.at(n).at(:time).text
+                              o[:timezone] = channel.at(n).at(:timezone).text
+                            rescue
+                              o = nil
+                            end
+                            o
+                          else
+                            begin
+                              channel.at(n).text
+                            rescue
+                              nil
+                            end
+                          end
+
+    end
+
+    parsed_channel
+
+  end
+
   def parse_message_list( list )
 
     xml = Nokogiri::XML(list)
     messages = Array.new
     xml.search('messageObject').map do |message|
-      puts message
       messages << parse_message(message)
     end
     messages
 
   end
 
+  def parse_channel_status_list( list )
+
+    xml = Nokogiri::XML(list)
+    status = Array.new
+    xml.search('channelStatus').map do |channel|
+      status << parse_channel_status(channel)
+    end
+    status
+
+  end
   def to_mirth_xml ( hash )
 
     return hash unless hash.is_a?(Hash)
@@ -216,7 +263,7 @@ class MirthConnect::Connection
     xml
   end
 
-  def mirth_request (endpoint, method, should_parse_output, opts = {})
+  def mirth_request (endpoint, method, opts = {})
 
     url = @url + "#{endpoint}?op=#{method}"
 
