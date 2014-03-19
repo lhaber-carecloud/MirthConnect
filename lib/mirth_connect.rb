@@ -6,20 +6,14 @@ require 'nori'
 
 module MirthConnect
 
-  # Convience for MirthConnect::Connection.new
+  # Convenience for MirthConnect::Connection.new
   def self::connect( server, port, username, password, version )
-    unless active? && @connection.same_connection?( server, port, username, password, version )
-      @connection = MirthConnect::Connection.new( server, port, username, password, version )
-    end
+    @connection = MirthConnect::Connection.new( server, port, username, password, version )
     @connection
   end
 
   def self::active?
-    begin
-      @connection.active?
-    rescue
-      false
-    end
+    @connection ? @connection.active? : false
   end
 
   def self::connection
