@@ -7,8 +7,8 @@ require 'nori'
 module MirthConnect
 
   # Convenience for MirthConnect::Connection.new
-  def self::connect( server, port, username, password, version )
-    @connection = MirthConnect::Connection.new( server, port, username, password, version )
+  def self::connect( server, port, username, password, version, protocol = 'https' )
+    @connection = MirthConnect::Connection.new( server, port, username, password, version, protocol )
     @connection
   end
 

@@ -10,7 +10,7 @@ class MirthConnect::Connection
 
   HELPERS = MirthConnect::Helpers
 
-  def initialize( server, port, username, password, version, protocol = 'https')
+  def initialize( server, port, username, password, version, protocol )
     @url = "#{protocol}://#{server}:#{port}/"
     @version  = version
     begin
