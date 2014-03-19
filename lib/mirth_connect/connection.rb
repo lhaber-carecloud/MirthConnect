@@ -116,10 +116,8 @@ class MirthConnect::Connection
     begin
       response = RestClient.post  url, payload, :cookies => @cookie
     rescue => e
-
       case e.to_s
         when '403 Forbidden'
-
           puts 'LOGGING INTO MIRTH...'
           @cookie = login(@password, @username, @version).cookies
 
@@ -128,22 +126,16 @@ class MirthConnect::Connection
           rescue
             raise e, 'Cannot Log Into Mirth'
           end
-
         when '500 Internal Server Error'
-
           puts e
+          puts "Method - #{endpoint}/#{method}"
           puts 'CHECK PAYLOAD ARGUMENTS:'
           payload.each_pair {|k,v| puts "#{k}: #{v}\n"}
-
           return
-
         else
-
           puts e
-
           return
       end
-
     end
 
     response
