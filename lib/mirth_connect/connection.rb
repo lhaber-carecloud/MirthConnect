@@ -5,8 +5,7 @@ require 'mirth_connect/filter'
 
 class MirthConnect::Connection
 
-  attr_accessor :url, :version
-  attr_accessor :current_filter
+  attr_accessor :url, :version, :current_filter
 
   HELPERS = MirthConnect::Helpers
 
@@ -27,6 +26,8 @@ class MirthConnect::Connection
       return false
   end
 
+
+  ## General Public Methods
   def login(password, username, version)
     mirth_request( 'users', 'login', {:username => username, :password => password, :version => version} )
   end
@@ -48,19 +49,31 @@ class MirthConnect::Connection
     create_message_filter( MirthConnect::Filter.new( filter_opts ) )
   end
 
+  def get_message( filter_opts )
+    num = count_messages( filter_opts )
+    if num == 0
+      nil
+    elsif num == 1
+      retrieve_message
+    else
+      raise Exception, 'more than one message for given filter - (use find_messages method)'
+    end
+  end
+
+  def find_messages( filter_opts )
+    num = count_messages( filter_opts )
+    num == 0 ? [] : retrieve_messages
+  end
+
+
+  ## Specfic Methods
+
   def count_messages_today( filter_opts = {} )
     create_message_filter( MirthConnect::Filter.today( filter_opts ) )
   end
 
-  def get_message( filter_opts )
-    num = count_messages( filter_opts )
-    raise Exception, 'more than one message for given filter'  if num > 1
-    retrieve_message
-  end
-
-  def get_messages( filter_opts )
-    count_messages( filter_opts )
-    retrieve_messages
+  def count_messages_yesterday( filter_opts = {} )
+    create_message_filter( MirthConnect::Filter.yesterday( filter_opts ) )
   end
 
   def get_messages_today( filter = {} )
@@ -68,6 +81,10 @@ class MirthConnect::Connection
     retrieve_messages
   end
 
+  def get_messages_yesterday( filter = {} )
+    count_messages_yesterday( filter )
+    retrieve_messages
+  end
 
 
   protected
@@ -83,7 +100,6 @@ class MirthConnect::Connection
     xml.search('messageObject').each{|message| list << MirthConnect::Message.new(message) }
     list
   end
-
 
   def create_message_filter( filter )
     @current_filter = filter if filter.is_a?(MirthConnect::Filter)

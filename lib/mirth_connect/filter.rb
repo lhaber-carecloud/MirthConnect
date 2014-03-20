@@ -66,7 +66,12 @@ class MirthConnect::Filter
   class << self
 
     def today( filter = {} )
-      filter = filter.merge({:startDate => Date.today, :endDate => Time.now})
+      filter = filter.merge({:startDate => Date.today})
+      self.new( filter )
+    end
+
+    def yesterday( filter = {} )
+      filter = filter.merge({:startDate => Date.yesterday, :endDate => Date.today})
       self.new( filter )
     end
 
